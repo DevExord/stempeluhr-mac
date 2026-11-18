@@ -1,0 +1,61 @@
+# Builds Stempeluhr.app and, for a version tag, publishes it as a Release.
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Build & Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build Stempeluhr.app
+        run: ./scripts/build-app.sh release
+
+      - name: Headless self-test (against the mock Kimai server)
+        run: |
+          python3 tools/mock-kimai.py 8765 &
+          MOCK=$!
+          sleep 2
+          .build/release/Stempeluhr selftest http://127.0.0.1:8765 testtoken
+          kill $MOCK || true
+
+      - name: Zip the app (preserving the code signature)
+        run: |
+          cd build
+          ditto -c -k --keepParent --sequesterRsrc Stempeluhr.app Stempeluhr-macOS.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stempeluhr-macOS
+          path: build/Stempeluhr-macOS.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/Stempeluhr-macOS.zip
+          generate_release_notes: true
+          body: |
+            ## Stempeluhr for macOS
+
+            Download **Stempeluhr-macOS.zip**, unzip it, and move `Stempeluhr.app`
+            to your Applications folder.
+
+            The app is **not Apple-notarized**, so the first launch needs one extra
+            step: **right-click the app → Open → Open**. (Or run
+            `xattr -dr com.apple.quarantine /Applications/Stempeluhr.app` once.)
+
+            Then click the stopwatch in your menu bar and connect it to your Kimai
+            server with an API token.
