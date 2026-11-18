@@ -4,16 +4,21 @@
 #
 #   scripts/build-app.sh [release|debug]   (default: release)
 #
-# Output: macos/build/Stempeluhr.app  (ad-hoc signed so it runs locally).
+# A universal (Apple Silicon + Intel) build by default, so one app runs on any
+# Mac. Set ARCHS="" to build only for the host architecture (faster).
+# Output: build/Stempeluhr.app  (ad-hoc signed so it runs locally).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG="${1:-release}"
 APP="build/Stempeluhr.app"
+ARCHS="${ARCHS---arch arm64 --arch x86_64}"
 
-echo "→ swift build -c $CONFIG"
-swift build -c "$CONFIG"
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/Stempeluhr"
+echo "→ swift build -c $CONFIG ${ARCHS}"
+# shellcheck disable=SC2086
+swift build -c "$CONFIG" $ARCHS
+# shellcheck disable=SC2086
+BIN="$(swift build -c "$CONFIG" $ARCHS --show-bin-path)/Stempeluhr"
 
 echo "→ assembling $APP"
 rm -rf "$APP"

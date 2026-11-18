@@ -80,16 +80,29 @@ swift build
 
 This is also run in CI on every release build.
 
-## How releases work
+## Cutting a release
 
-Pushing a tag like `v1.0.0` triggers
-[`.github/workflows/release.yml`](.github/workflows/release.yml), which builds
-the app on a macOS runner, runs the self-test, zips `Stempeluhr.app`, and
-attaches it to a GitHub Release.
+Each release attaches a universal (Apple Silicon + Intel) `Stempeluhr-macOS.zip`
+to a GitHub Release. There are two ways to produce it:
+
+**From your Mac (works on a private repo):**
 
 ```sh
-git tag v1.0.1 && git push origin v1.0.1
+scripts/release.sh v1.0.1
 ```
+
+This builds the app, zips it, pushes the tag, and creates/updates the Release
+with `gh`.
+
+**On GitHub Actions** ([`.github/workflows/release.yml`](.github/workflows/release.yml)):
+pushing a `v*` tag builds on a macOS runner, runs the self-test, and publishes
+the Release automatically.
+
+> **Note:** GitHub's macOS-hosted runners are free only on **public**
+> repositories. While this repo is **private**, the Actions build is refused
+> ("configuration … not supported") until you either make the repo public or
+> enable macOS-runner billing (Settings → Billing → spending limit). Until
+> then, use `scripts/release.sh` above — it builds locally and needs no CI.
 
 ## Credits & licence
 
