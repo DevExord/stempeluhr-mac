@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import SwiftUI
+import AppKit
 
 /// The popover shown when the menu-bar item is clicked.
 struct MenuContentView: View {
@@ -15,6 +16,8 @@ struct MenuContentView: View {
             }
         }
         .frame(width: 300)
+        // Refresh every time the popover opens, not only on the manual button.
+        .onAppear { Task { await store.refreshOnOpen() } }
     }
 
     // MARK: - Connected
@@ -233,19 +236,23 @@ struct MenuContentView: View {
                 }
                 .help("Refresh")
 
-                if let host = URL(string: store.serverURL)?.host {
-                    Text(host).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                if let url = URL(string: store.serverURL), let host = url.host {
+                    Button(action: { NSWorkspace.shared.open(url) }) {
+                        Text(host).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    .help("Open \(host) in your browser")
                 }
                 Spacer()
                 Menu {
                     Button("Disconnect…") { store.disconnect() }
-                    Divider()
                     Button("Quit Stempeluhr") { NSApplication.shared.terminate(nil) }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .fixedSize()
+                .help("Sign out or quit")
             }
             .buttonStyle(.borderless)
             .padding(12)

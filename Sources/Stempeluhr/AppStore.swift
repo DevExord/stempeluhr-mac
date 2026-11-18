@@ -71,6 +71,7 @@ final class AppStore: ObservableObject {
     private var client: KimaiClient?
     private var pollTask: Task<Void, Never>?
     private var tickTimer: Timer?
+    private var lastOpenRefresh: Date = .distantPast
 
     private let defaults = UserDefaults.standard
     private enum Keys {
@@ -90,7 +91,27 @@ final class AppStore: ObservableObject {
         }
         startTicking()
         observeWake()
+        observeWindowOpen()
         Task { await bootstrap() }
+    }
+
+    /// Refreshes whenever the menu-bar popover opens. The `.window`-style
+    /// popover becomes key when shown, so we listen for that and also for the
+    /// content's `onAppear`; a short throttle collapses the two into one call.
+    func refreshOnOpen() async {
+        guard phase == .connected else { return }
+        let nowDate = Date()
+        guard nowDate.timeIntervalSince(lastOpenRefresh) > 1 else { return }
+        lastOpenRefresh = nowDate
+        await refreshAll()
+    }
+
+    private func observeWindowOpen() {
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.refreshOnOpen() }
+        }
     }
 
     // MARK: - Derived display
